@@ -206,6 +206,8 @@
 // RegFdev - frequency deviation (Hz)
 #define RF_FDEVMSB_2000             0x00
 #define RF_FDEVLSB_2000             0x21
+#define RF_FDEVMSB_4500				0x00 
+#define RF_FDEVLSB_4500				0x4a
 #define RF_FDEVMSB_5000             0x00  // Default
 #define RF_FDEVLSB_5000             0x52  // Default
 #define RF_FDEVMSB_7500             0x00
