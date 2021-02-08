@@ -27,7 +27,7 @@
 #define RFM69_h
 #include <Arduino.h>            // assumes Arduino IDE v1.0 or greater
 
-#define RF69_MAX_DATA_LEN       61 // to take advantage of the built in AES/CRC we want to limit the frame size to the internal FIFO size (66 bytes - 3 bytes overhead - 2 bytes crc)
+#define RF69_MAX_DATA_LEN       10240 // to take advantage of the built in AES/CRC we want to limit the frame size to the internal FIFO size (66 bytes - 3 bytes overhead - 2 bytes crc)
 #define RF69_SPI_CS             SS // SS is the SPI slave select pin, for instance D10 on ATmega328
 
 // INT0 on AVRs should be connected to RFM69's DIO0 (ex on ATmega328 it's D2, on ATmega644/1284 it's D2)
@@ -100,6 +100,8 @@ class RFM69 {
     void setNetwork(uint8_t networkID);
     bool canSend();
     virtual void send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK=false);
+	virtual void send_pocsag(const void* buffer, uint8_t bufferSize);
+	virtual void set_tx_mode(bool mode);
     virtual bool sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries=2, uint8_t retryWaitTime=40); // 40ms roundtrip req for 61byte packets
     virtual bool receiveDone();
     bool ACKReceived(uint8_t fromNodeID);
