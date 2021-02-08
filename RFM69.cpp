@@ -70,7 +70,8 @@ bool RFM69::initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
     /* 0x28 */ { REG_IRQFLAGS2, RF_IRQFLAGS2_FIFOOVERRUN }, // writing to this bit ensures that the FIFO & status flags are reset
     /* 0x29 */ { REG_RSSITHRESH, 220 }, // must be set to dBm = (-Sensitivity / 2), default is 0xE4 = 228 so -114dBm
     /* 0x2D */ { REG_PREAMBLELSB, 0x00 }, // default 3 preamble bytes 0xAAAAAA
-    /* 0x2E */ { REG_SYNCCONFIG, RF_SYNC_ON | RF_SYNC_FIFOFILL_AUTO | RF_SYNC_SIZE_2 | RF_SYNC_TOL_0 },
+    /* 0x2E */ /*{ REG_SYNCCONFIG, RF_SYNC_ON | RF_SYNC_FIFOFILL_AUTO | RF_SYNC_SIZE_2 | RF_SYNC_TOL_0 },*/
+    /* 0x2E */ { REG_SYNCCONFIG, RF_SYNC_ON | RF_SYNC_FIFOFILL_MANUAL | RF_SYNC_SIZE_2 | RF_SYNC_TOL_0 },
     /* 0x2F */ { REG_SYNCVALUE1, 0x00 },      // attempt to make this compatible with sync1 byte of RFM12B lib
     /* 0x30 */ { REG_SYNCVALUE2, 0x00 }, // NETWORK ID
     /* 0x37 */ { REG_PACKETCONFIG1, RF_PACKET1_FORMAT_FIXED | RF_PACKET1_DCFREE_OFF | RF_PACKET1_CRC_OFF | RF_PACKET1_CRCAUTOCLEAR_ON | RF_PACKET1_ADRSFILTERING_OFF },
@@ -270,6 +271,42 @@ void RFM69::sendACK(const void* buffer, uint8_t bufferSize) {
   RSSI = _RSSI; // restore payload RSSI
 }
 
+
+void RFM69::set_tx_mode(bool mode) {
+	if (mode == true) {
+	  setMode(RF69_MODE_STANDBY); // turn off receiver to prevent reception while filling fifo
+	  while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
+	  writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
+	  setMode(RF69_MODE_TX);
+	} else {
+	  uint32_t txStart = millis();
+	  while (digitalRead(_interruptPin) == 0 && millis() - txStart < RF69_TX_LIMIT_MS); // wait for DIO0 to turn HIGH signalling transmission finish
+	  //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // wait for ModeReady
+	  setMode(RF69_MODE_STANDBY);		
+	}
+}
+
+
+void RFM69::send_pocsag(const void* buffer, uint8_t bufferSize) {
+  uint32_t len;
+  len = 0;
+  while (len < bufferSize)
+  {
+	  while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY) == 0x00)
+	  {
+		  if (len <= bufferSize)
+		  {
+			  select();
+			  SPI.transfer(REG_FIFO | 0x80);
+			  SPI.transfer(((uint8_t*) buffer)[len]);
+			  unselect();
+			  len++;
+		  }
+	  }
+  }
+}
+
+
 // internal function
 void RFM69::sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK, bool sendACK)
 {
@@ -289,7 +326,7 @@ void RFM69::sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize,
   SPI.transfer(REG_FIFO | 0x80);
 
   // fill TX FIFO with initial data
-  for (len = 0; len < buflen; len++)
+  for (len = 0; len < 61; len++)
     SPI.transfer(((uint8_t*) buffer)[len]);
   unselect();
 
