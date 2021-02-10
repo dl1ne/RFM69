@@ -290,7 +290,7 @@ void RFM69::set_tx_mode(bool mode) {
 void RFM69::send_pocsag(const void* buffer, uint8_t bufferSize) {
   uint32_t len;
   len = 0;
-  while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFOFULL) != 0x00); // wait if FIFO is full
+  while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFOLEVEL) != 0x00); // wait until FIFO is ready to get next data
   while (len < bufferSize)
   {
 	  while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY) == 0x00)
